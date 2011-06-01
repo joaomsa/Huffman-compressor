@@ -21,8 +21,7 @@ typedef struct tree_t{
 /* Discover file's filesize */
 unsigned long file_len(FILE* file);
 
-/* Initialize heap and set each byte's starting values */
-void heap_init(heap_t *heap);
+/* Initialize heap and set each byte's starting values */ void heap_init(heap_t *heap);
 
 /* Free memory taken by heap */
 void heap_dealloc(heap_t *heap);
@@ -76,6 +75,7 @@ void huff_build_decode_table(heap_t *heap, tree_t tree);
  */
 void file_write_header(FILE *outputFile, heap_t heap, unsigned long inputFileLen);
 
+/* Convert a base 10 number into binary code (little endian) as a string*/
 void dec_to_bin(unsigned long long dec, char* prefixBin, short bits);
 
 /* Buffer used to write bitstream */

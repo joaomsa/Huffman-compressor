@@ -39,13 +39,6 @@ void heap_fill(heap_t *heap, FILE *file){
         heap->byte[fileBuffer[i]].freq++;
     }
     free(fileBuffer);
-    /*
-    unsigned short byteRead;
-    for (i = 0; i < size; i++){
-        byteRead = fgetc(file);
-        heap->byte[byteRead].freq++;
-    }
-    */
 }
 
 /* Eliminate characters that did not appear in file and determine heap size */
@@ -237,7 +230,7 @@ void huff_build_decode_table(heap_t *heap, tree_t tree){
 /* Write prefix table header to file in format:
  * Number of symbols [2 bytes] Uncompressed file size [4 bytes]
  * For each symbol:
- *      Symbol [1 byte] Length of prefix code [1 byte] Prefix code [2 bytes]
+ *      Symbol [1 byte] Length of prefix code [1 byte] Prefix code [8 bytes]
  */
 void file_write_header(FILE *outputFile, heap_t heap, unsigned long inputFileLen){
     int i;
@@ -253,6 +246,7 @@ void file_write_header(FILE *outputFile, heap_t heap, unsigned long inputFileLen
     }
 }
 
+/* Convert a base 10 number into binary code (little endian) as a string*/
 void dec_to_bin(unsigned long long dec, char* prefixBin, short bits){
     int i;
     unsigned long long shift = 1;
@@ -309,6 +303,10 @@ unsigned long file_parse_header(FILE *compressedFile, tree_t *huff){
     unsigned long origFileLen;
     int i, j;
     byte_t *aux;
+
+    /* Do nothing if empty file */
+    if (file_len(compressedFile) == 0)
+        exit(0);
 
     fread(&symbNum, sizeof(short), 1, compressedFile);
     fread(&origFileLen, sizeof(unsigned long), 1, compressedFile);

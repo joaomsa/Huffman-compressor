@@ -14,6 +14,10 @@ int main(int argc, char *argv[]){
     unsigned long infileLen = file_len(infile);
     FILE *outfile = fopen(OUTFILE, "wb");
 
+    /* Nothing to do on empty files */
+    if (infileLen == 0)
+        return 0;
+
     heap_t huffQueue;
     tree_t huffTree;
 

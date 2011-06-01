@@ -1,4 +1,6 @@
-/* Joao Paulo Mendes de Sa * TP2 - Descompressor de Arquivos */
+/* Joao Paulo Mendes de Sa 
+ * TP2 - Descompressor de Arquivos
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
