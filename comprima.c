@@ -1,3 +1,7 @@
+/* Joao Paulo Mendes de Sa
+ * TP2 - Compressor de Arquivos
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include "huff.h"
@@ -33,5 +37,7 @@ int main(int argc, char *argv[]){
     /* When done close files */
     fclose(infile);
     fclose(outfile);
+    heap_dealloc(&huffQueue);
+    tree_dealloc(huffTree.root);
     return 0;
 }

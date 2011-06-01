@@ -24,6 +24,11 @@ void heap_init(heap_t *heap){
     }
 }
 
+/* Free memory taken by heap */
+void heap_dealloc(heap_t *heap){
+    free(heap->byte);
+}
+
 /* Read file and determine character frequencies */
 void heap_fill(heap_t *heap, FILE *file){
     unsigned long size = file_len(file);
@@ -165,7 +170,18 @@ byte_t* huff_build_tree(heap_t huffQueue){
     }
     auxFa = (byte_t*) malloc(sizeof(byte_t));
     *auxFa = huffAux.byte[0];
+    heap_dealloc(&huffClone);
+    heap_dealloc(&huffAux);
     return auxFa;
+}
+
+/* Free memory taken by tree */
+void tree_dealloc(byte_t *node){
+    if (node->lt != NULL)
+        tree_dealloc(node->lt);
+    if (node->rt != NULL)
+        tree_dealloc(node->rt);
+    free(node);
 }
 
 /* Used by bsearch to find corect byte in a ordered array */
@@ -275,8 +291,6 @@ void file_compress(FILE *outputFile, FILE *inputFile, heap_t heap, unsigned long
     write_bit(outputFile, 255,7); /* Write last partial bit in buffer to file */
 }
 
-/********************DECOMPRESSOR*************************************/
-
 /* Parse prefix table in file header and rebuild Huffman tree, return the original file's size */
 unsigned long file_parse_header(FILE *compressedFile, tree_t *huff){
     unsigned char symb, prefixLen;
@@ -290,6 +304,8 @@ unsigned long file_parse_header(FILE *compressedFile, tree_t *huff){
     fread(&symbNum, sizeof(short), 1, compressedFile);
     fread(&origFileLen, sizeof(unsigned long), 1, compressedFile);
     huff->root = (byte_t*) malloc(sizeof(byte_t));
+    huff->root->lt = NULL;
+    huff->root->rt = NULL;
     aux = huff->root;
 
     for (i = 0; i < symbNum; i++){
@@ -300,13 +316,19 @@ unsigned long file_parse_header(FILE *compressedFile, tree_t *huff){
 
         for (j = 0; j < prefixLen; j++){
             if (prefixBin[j] == 0){
-                if (aux->lt == NULL)
+                if (aux->lt == NULL){
                     aux->lt = (byte_t*) malloc(sizeof(byte_t));
+                    aux->lt->lt = NULL;
+                    aux->lt->rt = NULL;
+                }
                 aux = aux->lt;
             }
             else {
-                if (aux->rt == NULL)
+                if (aux->rt == NULL){
                     aux->rt = (byte_t*) malloc(sizeof(byte_t));
+                    aux->rt->lt = NULL;
+                    aux->rt->rt = NULL;
+                }
                 aux = aux->rt;
             }
         }

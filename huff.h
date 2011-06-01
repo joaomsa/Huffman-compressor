@@ -24,6 +24,9 @@ unsigned long file_len(FILE* file);
 /* Initialize heap and set each byte's starting values */
 void heap_init(heap_t *heap);
 
+/* Free memory taken by heap */
+void heap_dealloc(heap_t *heap);
+
 /* Read file and determine character frequencies */
 void heap_fill(heap_t *heap, FILE *file);
 
@@ -53,6 +56,9 @@ byte_t heap_extract_min(heap_t *heap, int(*cmp)(byte_t, byte_t));
 
 /* Build huffman code tree */
 byte_t* huff_build_tree(heap_t huffQueue);
+
+/* Free memory taken by tree */
+void tree_dealloc(byte_t *node);
 
 /* Used by bsearch to find corect byte in a ordered array */
 int bsearchCmp_symb(const void* a, const void* b);
