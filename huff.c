@@ -33,11 +33,19 @@ void heap_dealloc(heap_t *heap){
 void heap_fill(heap_t *heap, FILE *file){
     unsigned long size = file_len(file);
     unsigned long i;
+    unsigned char *fileBuffer = (unsigned char*) malloc(size * sizeof(unsigned char));
+    fread(fileBuffer, sizeof(unsigned char), size, file);
+    for (i = 0; i < size; i++){
+        heap->byte[fileBuffer[i]].freq++;
+    }
+    free(fileBuffer);
+    /*
     unsigned short byteRead;
     for (i = 0; i < size; i++){
         byteRead = fgetc(file);
         heap->byte[byteRead].freq++;
     }
+    */
 }
 
 /* Eliminate characters that did not appear in file and determine heap size */
@@ -45,7 +53,7 @@ void heap_condense(heap_t *heap){
     int i, j;
     for (i = 0; i < 256; i++){
         if (heap->byte[i].freq == 0){
-            for (j = i + 1; heap->byte[j].freq == 0 && j < 256; j++);
+            for (j = i + 1; j < 256 && heap->byte[j].freq == 0; j++);
             if (j < 256){
                 heap->byte[i] = heap->byte[j];
                 heap->byte[j].freq = 0;
@@ -158,7 +166,7 @@ byte_t* huff_build_tree(heap_t huffQueue){
             *auxLt = heap_extract_min(&huffClone, heapCmp_freq);
         else
             *auxLt = heap_extract_min(&huffAux, heapCmp_freq);
-        if (huffClone.size > 0 && huffClone.byte[0].freq <= huffAux.byte[0].freq)
+        if (huffClone.size > 0 && (huffAux.size == 0 || huffClone.byte[0].freq <= huffAux.byte[0].freq))
             *auxRt = heap_extract_min(&huffClone, heapCmp_freq);
         else
             *auxRt = heap_extract_min(&huffAux, heapCmp_freq);
@@ -166,6 +174,7 @@ byte_t* huff_build_tree(heap_t huffQueue){
         huffAux.byte[huffAux.size].freq = auxLt->freq + auxRt->freq;
         huffAux.byte[huffAux.size].lt = auxLt;
         huffAux.byte[huffAux.size].rt = auxRt;
+        huffAux.byte[huffAux.size].symb = 'F';
         huffAux.size++;
     }
     auxFa = (byte_t*) malloc(sizeof(byte_t));
@@ -192,7 +201,7 @@ int bsearchCmp_symb(const void* a, const void* b){
 }
 
 /* Take a string with a binary code (little endian) and convert it to base 10 */
-void bin_to_dec(char* binary, unsigned short *dec, short bits){
+void bin_to_dec(char* binary, unsigned long long *dec, short bits){
     int i;
     *dec = 0;
     for (i = 0; i < bits; i++)
@@ -208,10 +217,10 @@ void huff_build_decode_table(heap_t *heap, tree_t tree){
         if (byte.lt == NULL && byte.rt == NULL){
             matchedSymb = bsearch(&byte, heap->byte, heap->size, sizeof(byte_t), bsearchCmp_symb);
             if (matchedSymb != NULL){
-                for (i = prefixLen; i < 16; i++)
+                for (i = prefixLen; i < 64; i++)
                     prefixBin[i] = 0;
                 matchedSymb->prefixLen = prefixLen;
-                bin_to_dec(prefixBin, &matchedSymb->prefix, 16);
+                bin_to_dec(prefixBin, &matchedSymb->prefix, 64);
             }
         }
         prefixBin[prefixLen] = 0;
@@ -221,7 +230,7 @@ void huff_build_decode_table(heap_t *heap, tree_t tree){
         if (byte.rt != NULL)
             huff_build_decode_table_aux(heap, *byte.rt, prefixBin, prefixLen + 1);
     }
-    char prefixBin[16];
+    char prefixBin[64];
     huff_build_decode_table_aux(heap, *tree.root, prefixBin, 0);
 }
 
@@ -240,26 +249,24 @@ void file_write_header(FILE *outputFile, heap_t heap, unsigned long inputFileLen
         prefixLen = heap.byte[i].prefixLen;
         fwrite(&symb, sizeof(unsigned char), 1, outputFile);
         fwrite(&prefixLen, sizeof(unsigned char), 1, outputFile);
-        /*
-           fwrite((unsigned char*)&heap.byte[i].symb, sizeof(unsigned char), 1, outputFile); fwrite((unsigned char*)&heap.byte[i].prefixLen, sizeof(unsigned char), 1, outputFile);
-           */
-        fwrite((unsigned short*)&heap.byte[i].prefix, sizeof(unsigned short), 1, outputFile);
+        fwrite((unsigned long long*)&heap.byte[i].prefix, sizeof(unsigned long long), 1, outputFile);
     }
 }
 
-void dec_to_bin(unsigned short dec, char* prefixBin, short bits){
+void dec_to_bin(unsigned long long dec, char* prefixBin, short bits){
     int i;
+    unsigned long long shift = 1;
     for (i = bits - 1; i >= 0; i--){
-        if (dec / (1 << i))
+        if (dec / (shift << i))
             prefixBin[i] = 1;
         else
             prefixBin[i] = 0;
-        dec = dec % (1 << i);
+        dec = dec % (shift << i);
     }
 }
 
 /* Buffer used to write bitstream */
-void write_bit(FILE *outputFile, short prefix, short prefixLen){
+void write_bit(FILE *outputFile, unsigned long long prefix, short prefixLen){
     static unsigned char buffer = 0; /* Persistent across function calls */
     static unsigned bufferUsed = 0;
     int i;
@@ -282,6 +289,8 @@ void file_compress(FILE *outputFile, FILE *inputFile, heap_t heap, unsigned long
     unsigned long i;
     byte_t *matchedSymb;
     byte_t symbRead;
+
+
     fseek(inputFile, 0, SEEK_SET);
     for (i = 0; i < inputFileLen; i++){
         symbRead.symb = fgetc(inputFile);
@@ -294,9 +303,9 @@ void file_compress(FILE *outputFile, FILE *inputFile, heap_t heap, unsigned long
 /* Parse prefix table in file header and rebuild Huffman tree, return the original file's size */
 unsigned long file_parse_header(FILE *compressedFile, tree_t *huff){
     unsigned char symb, prefixLen;
-    unsigned short prefixDec;
+    unsigned long long prefixDec;
     short symbNum;
-    char prefixBin[16]; 
+    char prefixBin[64]; 
     unsigned long origFileLen;
     int i, j;
     byte_t *aux;
@@ -311,8 +320,8 @@ unsigned long file_parse_header(FILE *compressedFile, tree_t *huff){
     for (i = 0; i < symbNum; i++){
         fread(&symb, sizeof(unsigned char), 1, compressedFile);
         fread(&prefixLen, sizeof(unsigned char), 1, compressedFile);
-        fread(&prefixDec, sizeof(unsigned short), 1, compressedFile);
-        dec_to_bin(prefixDec, prefixBin, 16);
+        fread(&prefixDec, sizeof(unsigned long long), 1, compressedFile);
+        dec_to_bin(prefixDec, prefixBin, 64);
 
         for (j = 0; j < prefixLen; j++){
             if (prefixBin[j] == 0){

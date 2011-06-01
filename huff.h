@@ -4,7 +4,7 @@
 typedef struct byte_t{
     unsigned short symb; /* Uncompressed symbol */
     unsigned long freq; /* Number of times char appears in file */
-    unsigned short prefix; /* Huffman prefix code */
+    unsigned long long prefix; /* Huffman prefix code assuming at  most 64 bit long*/
     short prefixLen; /* Length of prefix code */
     struct byte_t *lt, *rt; /* left and right pointes for Huffman tree */
 } byte_t;
@@ -64,7 +64,7 @@ void tree_dealloc(byte_t *node);
 int bsearchCmp_symb(const void* a, const void* b);
 
 /* Take a string with a binary code (little endian) and convert it to base 10 */
-void bin_to_dec(char* binary, unsigned short *dec, short bits);
+void bin_to_dec(char* binary, unsigned long long *dec, short bits);
 
 /* Build the huffman prefix code for each character */
 void huff_build_decode_table(heap_t *heap, tree_t tree);
@@ -76,10 +76,10 @@ void huff_build_decode_table(heap_t *heap, tree_t tree);
  */
 void file_write_header(FILE *outputFile, heap_t heap, unsigned long inputFileLen);
 
-void dec_to_bin(unsigned short dec, char* prefixBin, short bits);
+void dec_to_bin(unsigned long long dec, char* prefixBin, short bits);
 
 /* Buffer used to write bitstream */
-void write_bit(FILE *outputFile, short prefix, short prefixLen);
+void write_bit(FILE *outputFile, unsigned long long prefix, short prefixLen);
 
 /* Read input file and write compressed bitstream to output file */
 void file_compress(FILE *outputFile, FILE *inputFile, heap_t heap, unsigned long inputFileLen);
